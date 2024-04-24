@@ -93,7 +93,182 @@ exports.getInternships = async(req,res) => {
     
 }
 
+// exports.getInternshipDetails = async(req,res) => {
+
+//     try{
+//         const user = await User.findById(req.user.userId)
+//         .populate({
+//             path: 'applications',
+//             populate: {
+//                 path: 'createdBy', 
+//                 model: 'User',
+//                 path : "domain",
+//                 model : Domain
+//             },
+//         })
+//         .exec();
+    
+//             const internships = user;
+
+
+//             res.status(200).json({
+//                 success : true,
+//                 internships
+//             });
+
+//     }catch(err){
+
+//         console.log(err);
+//         res.status(500).json({
+//             success : false,
+//             message : "Something went wrong while fetching internships , plz try again later",
+//             error : err.message 
+//         });
+
+//     }
+    
+// }
+
 //auth isTeacher
+// exports.getInternshipDetails = async (req, res) => {
+//     try {
+//         const user = await User.findById(req.user.userId)
+//             .populate({
+//                 path: 'applications',
+//                 populate: {
+//                     path: 'createdBy',
+//                     model: 'User'
+//                 }
+//             })
+//             .exec();
+
+//         const internshipPromises = user.applications.map(async application => {
+//             const domains = await Domain.find({ _id: { $in: application.domain } }).select('name');
+//             return {
+//                 _id: application._id,
+//                 domain: domains.map(domain => domain.name),
+//                 description: application.description,
+//                 createdBy: application.createdBy,
+//                 startDate: application.startDate,
+//                 endDate: application.endDate,
+//                 State: application.State,
+//                 // Include other fields here
+//             };
+//         });
+
+//         const internships = await Promise.all(internshipPromises);
+
+//         res.status(200).json({
+//             success: true,
+//             internships
+//         });
+//     } catch (err) {
+//         console.log(err);
+//         res.status(500).json({
+//             success: false,
+//             message: "Something went wrong while fetching internships, please try again later",
+//             error: err.message
+//         });
+//     }
+// };
+exports.getInternshipDetails = async (req, res) => {
+    try {
+        const user = await User.findById(req.user.userId)
+            .populate({
+                path: 'applications',
+                populate: {
+                    path: 'createdBy',
+                    model: 'User'
+                }
+            })
+            .exec();
+
+        const internshipPromises = user.applications.map(async application => {
+            const domains = await Domain.find({ _id: { $in: application.domain } }).select('name');
+            return {
+                _id: application._id,
+                domain: domains.map(domain => domain.name),
+                description: application.description,
+                createdBy: application.createdBy,
+                startDate: application.startDate,
+                endDate: application.endDate,
+                State: application.State, // Assuming the State field is named 'State'
+                state: application.applicants[0].state, // Assuming state is stored in the first applicant
+                // Include other fields here
+            };
+        });
+
+        const internships = await Promise.all(internshipPromises);
+
+        res.status(200).json({
+            success: true,
+            internships
+        });
+    } catch (err) {
+        console.log(err);
+        res.status(500).json({
+            success: false,
+            message: "Something went wrong while fetching internships, please try again later",
+            error: err.message
+        });
+    }
+};
+
+
+exports.getTeacherInternshipDetails = async (req, res) => {
+    try {
+        const user = await User.findById(req.user.userId)
+            .populate({
+                path: 'applications',
+                populate: {
+                    path: 'createdBy',
+                    model: 'User'
+                }
+            })
+            .exec();
+
+        const internshipPromises = user.applications.map(async application => {
+            const domains = await Domain.find({ _id: { $in: application.domain } }).select('name');
+            const applicants = await User.find({ applications: { $in: [application._id] } });
+            return {
+                _id: application._id,
+                domain: domains.map(domain => domain.name),
+                description: application.description,
+                createdBy: application.createdBy,
+                startDate: application.startDate,
+                endDate: application.endDate,
+                State: application.State, // Assuming the State field is named 'State' // Assuming state is stored in the first applicant
+                applicants: applicants.map(applicant => ({
+                    _id: applicant._id,
+                    firstName: applicant.firstName,
+                    lastName: applicant.lastName,
+                    dept: applicant.dept,
+                    id: applicant.id,
+                    state: applicant.applications.find(app => app.equals(application._id)).state
+                    // Include other fields of applicant if needed
+                })),
+                // Include other fields here
+            };
+        });
+
+        const internships = await Promise.all(internshipPromises);
+
+        res.status(200).json({
+            success: true,
+            internships
+        });
+    } catch (err) {
+        console.log(err);
+        res.status(500).json({
+            success: false,
+            message: "Something went wrong while fetching internships, please try again later",
+            error: err.message
+        });
+    }
+};
+
+
+
 exports.changeState = async(req,res) => {
 
     try{
@@ -157,6 +332,16 @@ exports.apply = async(req,res) => {
 
         const {internshipId} = req.body;
 
+        const app = await User.findById(req.user.userId).select("applications");
+
+        if(app.applications.includes(internshipId)){
+            return res.status(405).json({
+                success : false,
+                message : "Already registered"
+            });
+        }
+
+        console.log(req.body);
         if(!internshipId){
             return res.status(400).json({
                 success : false,
@@ -209,7 +394,7 @@ exports.apply = async(req,res) => {
 exports.accept = async(req,res) => {
 
     try{
-
+        console.log(req.body);
         const {studentId , internshipId } = req.body;
 
         if(!studentId || !internshipId){
@@ -219,10 +404,11 @@ exports.accept = async(req,res) => {
             });
         }
 
-        const internship = await Internship.findOne({_id : internshipId});
-        const user = await User.findOne({id : studentId});
-
+        const internship = await Internship.findById(internshipId);
+        const user = await User.findById(studentId);
+        
         if(!internship || !user){
+            console.log("hii")
             return res.status(404).json({
                 success : false,
                 message : "Invalid inputs"
@@ -281,8 +467,8 @@ exports.reject = async(req,res) => {
             });
         }
 
-        const internship = await Internship.findOne({_id : internshipId});
-        const user = await User.findOne({id : studentId});
+        const internship = await Internship.findById(internshipId);
+        const user = await User.findById(studentId);
 
         if(!internship || !user){
             return res.status(404).json({

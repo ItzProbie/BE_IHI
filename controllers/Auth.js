@@ -65,6 +65,9 @@ exports.signUp = async(req,res) => {
             firstName , lastName , email , password , id , mentor , dept , otp
         } = req.body;
 
+        // console.log(otp);
+        // console.log(req.body);
+
         const role = req.body.role || 'Student';
 
         if(!firstName || !email || !password || !lastName || !id || !dept || !otp){
@@ -85,6 +88,7 @@ exports.signUp = async(req,res) => {
         const existingId = await User.findOne({id});
 
         if(existingId || existingMail){
+            
             return res.status(400).json({
                 success : false,
                 mssg : "User already registered please login"
@@ -92,6 +96,7 @@ exports.signUp = async(req,res) => {
         }
 
         const otpDB = await Otp.find({email}).sort({createdAt : -1}).limit(1);
+       console.log(otpDB);
         if(otpDB.length === 0){
 
             return res.status(400).json({
@@ -100,8 +105,9 @@ exports.signUp = async(req,res) => {
             });
 
         }
-        else if(otp !== otpDB[0].otp){
-
+        else if(parseInt(otp) !== parseInt(otpDB[0].otp)){
+            console.log(otp , otpDB[0].otp);
+           
             return res.status(400).json({
                 success : false,
                 mssg : "INVALID OTP"
@@ -112,7 +118,8 @@ exports.signUp = async(req,res) => {
         if(role==='Student'){
             
             const mentorUser = await User.findOne({email : mentor});
-            if(!mentorUser || mentorUser.role==='Student'){
+            if(!mentorUser && mentorUser.role==='Student'){
+               
                 return sessionStorage.status(400).json({
                     success : false,
                     message : "Invalid mentor"
@@ -215,6 +222,8 @@ exports.login = async(req,res) => {
                 name : user.name , 
                 dp : user.image , 
                 role : user.role ,
+                id : user.id,
+                applications : user.applications,
                 message : "Logged in successfully"
             });
 

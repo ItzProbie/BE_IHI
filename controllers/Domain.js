@@ -7,6 +7,23 @@ exports.createDomain = async(req,res) => {
     try{
 
         const name = req.body.name;
+
+        if(!name){
+            return res.status(400).json({
+                success : false,
+                message : "All Fields Are Mandatory"
+            });
+        }
+
+        const duplicate = await Domain.findOne({name});
+
+        if(duplicate){
+            return res.status(403).json({
+                success : false,
+                message : "Domain Exists"
+            });
+        }
+
         const domain = await Domain.create({name});
 
         res.status(200).json({
@@ -43,7 +60,7 @@ exports.getDomains = async(req,res) => {
     }catch(err){
 
         console.log(err);
-        res.status(500).jsno({
+        res.status(500).json({
             success : false,
             message : "Something went wrong while fetching domains , plz try again later",
             error : err.message
@@ -98,6 +115,8 @@ exports.deleteDomain = async(req,res) => {
     try{
 
         const domainName = req.body.domainName;
+
+        
 
         if(!domainName){
             return res.status(400).json({
