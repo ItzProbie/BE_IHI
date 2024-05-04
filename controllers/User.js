@@ -90,7 +90,7 @@ exports.deleteUser = async(req,res) => {
 exports.changeDP = async(req,res) => {
 
     try{
-
+        console.log(req);
       const file = req.files.image;
       console.log(file);
 

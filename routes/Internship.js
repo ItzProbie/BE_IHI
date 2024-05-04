@@ -10,7 +10,7 @@ router.post("/apply" , auth , isStudent , apply);
 router.post("/changeState" , auth , isTeacher , changeState);
 router.post("/acceptApplicant" , auth , isTeacher , accept);
 router.post("/rejectApplicant" , auth , isTeacher , reject);
-router.get("/getInternshipDetails" , auth , getInternshipDetails);
+router.get("/getStudentInternshipDetails" , auth , isStudent , getInternshipDetails);
 router.get("/getTeacherInternshipDetails" , auth , isTeacher , getTeacherInternshipDetails);
 
 

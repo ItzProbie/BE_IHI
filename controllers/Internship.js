@@ -182,9 +182,10 @@ exports.getInternshipDetails = async (req, res) => {
                 }
             })
             .exec();
-
-        const internshipPromises = user.applications.map(async application => {
-            const domains = await Domain.find({ _id: { $in: application.domain } }).select('name');
+            
+            const internshipPromises = user.applications.map(async application => {
+                const domains = await Domain.find({ _id: { $in: application.domain } }).select('name');
+                const index = application.applicants.findIndex(applicant => applicant.user.equals(new mongoose.Types.ObjectId(user._id)));
             return {
                 _id: application._id,
                 domain: domains.map(domain => domain.name),
@@ -193,7 +194,7 @@ exports.getInternshipDetails = async (req, res) => {
                 startDate: application.startDate,
                 endDate: application.endDate,
                 State: application.State, // Assuming the State field is named 'State'
-                state: application.applicants[0].state, // Assuming state is stored in the first applicant
+                state: application.applicants[index !== -1 ? index : 0].state, // Assuming state is stored in the first applicant
                 // Include other fields here
             };
         });
@@ -226,10 +227,13 @@ exports.getTeacherInternshipDetails = async (req, res) => {
                 }
             })
             .exec();
-
+                
         const internshipPromises = user.applications.map(async application => {
             const domains = await Domain.find({ _id: { $in: application.domain } }).select('name');
             const applicants = await User.find({ applications: { $in: [application._id] } });
+            const index = await application.applicants.findIndex(applicant =>{ applicant.user.equals(new mongoose.Types.ObjectId(applicant._id))
+            console.log(applicant, "gyf",applicant._id )});
+            console.log("nashe ",index)
             return {
                 _id: application._id,
                 domain: domains.map(domain => domain.name),
@@ -244,10 +248,10 @@ exports.getTeacherInternshipDetails = async (req, res) => {
                     lastName: applicant.lastName,
                     dept: applicant.dept,
                     id: applicant.id,
-                    state: applicant.applications.find(app => app.equals(application._id)).state
-                    // Include other fields of applicant if needed
+                    // state: applicant.applications.find(app => app.equals(application._id)).state
+                    state: application.applicants[index !== -1 ? index : 0].state, // Assuming state is stored in the first applicant
+
                 })),
-                // Include other fields here
             };
         });
 
@@ -424,10 +428,12 @@ exports.accept = async(req,res) => {
             });
         }
 
+        console.log(internship)
         const index = internship.applicants.findIndex(applicant => applicant.user.equals(new mongoose.Types.ObjectId(user._id)));
-
+        console.log("index ",index);
         if(index!==-1){
             internship.applicants[index].state = "accepted";
+            console.log(internship.applicants[index])
             const updatedInternship = await internship.save();
             return res.status(200).json({
                 success : true,
